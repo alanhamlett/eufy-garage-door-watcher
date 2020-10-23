@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import humanize
 import requests
 import pytz
 import smtplib
 from email.message import EmailMessage
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 from secrets import (
@@ -52,7 +53,7 @@ def first_door_sensor(devices):
 
 
 def send_email(device, status, updated_at) -> None:
-    duration = natural_time(updated_at)
+    duration = humanize.naturaldelta(updated_at)
     since = format_time(updated_at)
 
     server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
@@ -67,56 +68,6 @@ def send_email(device, status, updated_at) -> None:
     msg['From'] = EMAIL
     msg['To'] = EMAIL
     server.send_message(msg)
-
-
-def natural_time(dt, timezone=None, show_tense=False, allow_future=True, short=False) -> str:
-    """Returns given timestamp/datetime as string like '2 hours ago'."""
-
-    if dt is None:
-        return ''
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=pytz.utc)
-    dt = dt.astimezone(TIMEZONE)
-    today = TIMEZONE.normalize(
-        datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(TIMEZONE)
-    )
-    in_future = dt > today
-    delta = abs(today - dt)
-    scale = largest_scale_for_delta(delta)
-
-    if scale == 'second':
-        value = delta.total_seconds()
-    elif scale == 'minute':
-        value = delta.total_seconds() // 60
-    elif scale == 'hour':
-        value = delta.total_seconds() // 60 // 60
-    elif scale == 'day':
-        value = delta.total_seconds() // 60 // 60 // 24
-    elif scale == 'week':
-        value = delta.total_seconds() // 60 // 60 // 24 // 7
-    elif scale == 'month':
-        value = delta.total_seconds() // 60 // 60 // 24 / 30.42
-    elif scale == 'year':
-        value = delta.total_seconds() // 60 // 60 // 24 // 365
-
-    value = int(value)
-    if value == 0:
-        value = 1
-
-    tense = 'ago'
-    if in_future and allow_future:
-        tense = 'in the future'
-
-    plural = 's'
-    if value == 1:
-        plural = ''
-
-    return '{value} {scale}{plural}{tense}'.format(
-        value=value,
-        scale=trim_scale(scale) if short else scale,
-        plural=plural,
-        tense=' ' + tense if show_tense else '',
-    )
 
 
 def format_time(dt) -> str:
@@ -140,39 +91,6 @@ def format_time(dt) -> str:
         minute=':' + minute if minute != '00' else '',
         ampm=dt.strftime('%p').lower(),
     )
-
-
-def largest_scale_for_delta(delta) -> str:
-    delta = abs(delta)
-    if delta < timedelta(minutes=1):
-        return 'second'
-    if delta < timedelta(hours=1):
-        return 'minute'
-    if delta < timedelta(days=1):
-        return 'hour'
-    if delta < timedelta(days=7):
-        return 'day'
-    if delta < timedelta(days=31):
-        return 'week'
-    if delta < timedelta(days=365):
-        return 'month'
-    return 'year'
-
-
-def trim_scale(scale) -> str:
-    if scale == 'second':
-        return 'sec'
-    if scale == 'minute':
-        return 'min'
-    if scale == 'hour':
-        return 'hr'
-    if scale == 'day':
-        return 'day'
-    if scale == 'week':
-        return 'wk'
-    if scale == 'month':
-        return 'mon'
-    return 'yr'
 
 
 if __name__ == '__main__':
