@@ -10,6 +10,7 @@ from datetime import datetime
 
 
 from secrets import (
+    DELAY_MINUTES,
     EUFY_EMAIL,
     EUFY_PASSWORD,
     TO_EMAILS,
@@ -41,7 +42,7 @@ def main() -> None:
     updated_at = datetime.utcfromtimestamp(device['update_time'])
     print(f'{device["device_name"]} is {state}.')
 
-    if state == 'open':
+    if state == 'open' and open_longer_than_delay(updated_at):
         send_email(device['device_name'], state, updated_at)
 
 
@@ -57,6 +58,11 @@ def door_sensor_state(device) -> str:
     if param is None:
         return 'unknown'
     return 'open' if param['param_value'] == '1' else 'closed'
+
+
+def open_longer_than_delay(updated_at):
+    minutes_open = (datetime.utcnow() - updated_at).total_seconds() / 60
+    return minutes_open > DELAY_MINUTES
 
 
 def send_email(device, state, updated_at) -> None:
