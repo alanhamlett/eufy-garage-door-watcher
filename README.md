@@ -4,7 +4,7 @@ Send yourself an email whenever the garage door is left open, using a [Eufy Secu
 
 ## Installation
 
-    git clone git@github.com:alanhamlett/eufy-garage-door-watcher.git && cd eufy-garage-door-watcher
+    git clone https://github.com/alanhamlett/eufy-garage-door-watcher.git && cd eufy-garage-door-watcher
     pip install -r requirements.txt
     cp secrets.py.example secrets.py
     echo "*/5 * * * * root $PWD/watch_garage_door.py" > /etc/cron.d/eufy-garage-door-watcher
