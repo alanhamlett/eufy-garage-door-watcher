@@ -2,6 +2,8 @@
 
 Send yourself an email whenever the garage door is left open, using a [Eufy Security door sensor][sensor].
 
+![email notification example](/example.png?raw=true)
+
 ## Installation
 
     git clone https://github.com/alanhamlett/eufy-garage-door-watcher.git && cd eufy-garage-door-watcher
