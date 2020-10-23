@@ -12,8 +12,9 @@ from datetime import datetime
 from secrets import (
     EUFY_EMAIL,
     EUFY_PASSWORD,
-    EMAIL,
-    PASSWORD,
+    TO_EMAILS,
+    SMTP_USERNAME,
+    SMTP_PASSWORD,
 )
 
 
@@ -58,15 +59,15 @@ def send_email(device, status, updated_at) -> None:
 
     server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
     server.starttls()
-    server.login(EMAIL, PASSWORD)
+    server.login(SMTP_USERNAME, SMTP_PASSWORD)
 
     msg = EmailMessage()
 
     message = f'{device} has been {status} for {duration} since {since}.\n'
     msg.set_content(message)
     msg['Subject'] = f'{device} {status} for {duration}'
-    msg['From'] = EMAIL
-    msg['To'] = EMAIL
+    msg['From'] = SMTP_USERNAME
+    msg['To'] = ', '.join(TO_EMAILS)
     server.send_message(msg)
 
 
