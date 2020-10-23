@@ -37,13 +37,12 @@ def main() -> None:
 
     resp = requests.post(API_BASE + '/app/get_devs_list', headers={'x-auth-token': token})
     device = first_door_sensor(resp.json()['data'])
-    param = next(filter(lambda p: p['param_type'] == 1550, device['params']), None)
-    status = 'open' if param['param_value'] == "1" else 'closed'
+    state = door_sensor_state(device)
     updated_at = datetime.utcfromtimestamp(device['update_time'])
-    print(f'{device["device_name"]} is {status}.')
+    print(f'{device["device_name"]} is {state}.')
 
-    if status == 'open':
-        send_email(device['device_name'], status, updated_at)
+    if state == 'open':
+        send_email(device['device_name'], state, updated_at)
 
 
 def first_door_sensor(devices):
@@ -53,7 +52,14 @@ def first_door_sensor(devices):
     return None
 
 
-def send_email(device, status, updated_at) -> None:
+def door_sensor_state(device) -> str:
+    param = next(filter(lambda p: p['param_type'] == 1550, device['params']), None)
+    if param is None:
+        return 'unknown'
+    return 'open' if param['param_value'] == '1' else 'closed'
+
+
+def send_email(device, state, updated_at) -> None:
     duration = humanize.naturaldelta(datetime.utcnow() - updated_at)
     since = format_time(updated_at)
 
@@ -63,9 +69,9 @@ def send_email(device, status, updated_at) -> None:
 
     msg = EmailMessage()
 
-    message = f'{device} has been {status} for {duration} since {since}.\n'
+    message = f'{device} has been {state} for {duration} since {since}.\n'
     msg.set_content(message)
-    msg['Subject'] = f'{device} {status} for {duration}'
+    msg['Subject'] = f'{device} {state} for {duration}'
     msg['From'] = SMTP_USERNAME
     msg['To'] = ', '.join(TO_EMAILS)
     server.send_message(msg)
