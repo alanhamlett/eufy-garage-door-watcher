@@ -37,7 +37,7 @@ def main() -> None:
     device = first_door_sensor(resp.json()['data'])
     param = next(filter(lambda p: p['param_type'] == 1550, device['params']), None)
     status = 'open' if param['param_value'] == "1" else 'closed'
-    updated_at = datetime.utcfromtimestamp(param['update_time'])
+    updated_at = datetime.utcfromtimestamp(device['update_time'])
     print(f'{device["device_name"]} is {status}.')
 
     if status == 'open':
