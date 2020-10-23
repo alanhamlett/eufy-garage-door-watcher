@@ -54,7 +54,7 @@ def first_door_sensor(devices):
 
 
 def send_email(device, status, updated_at) -> None:
-    duration = humanize.naturaldelta(updated_at)
+    duration = humanize.naturaldelta(datetime.utcnow() - updated_at)
     since = format_time(updated_at)
 
     server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
