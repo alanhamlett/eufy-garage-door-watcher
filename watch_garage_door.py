@@ -15,15 +15,15 @@ from secrets import (
     EUFY_EMAIL,
     EUFY_PASSWORD,
     TO_EMAILS,
+    SMTP_HOST,
+    SMTP_PORT,
     SMTP_USERNAME,
     SMTP_PASSWORD,
+    TIMEZONE,
 )
 
 
-TIMEZONE = pytz.timezone('America/Los_Angeles')
 API_BASE: str = "https://mysecurity.eufylife.com/api/v1"
-SMTP_HOST = 'smtp.gmail.com'
-SMTP_PORT = 587
 
 
 def main() -> None:
@@ -123,7 +123,8 @@ def format_time(dt) -> str:
         return ''
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=pytz.utc)
-    dt = dt.astimezone(TIMEZONE)
+    tz = pytz.timezone(TIMEZONE)
+    dt = dt.astimezone(tz)
     hour = dt.strftime('%H')
     minute = dt.strftime('%M')
     if hour == '00':
