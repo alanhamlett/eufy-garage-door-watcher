@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import humanize
+import json
 import requests
 import pytz
 import smtplib
@@ -31,24 +32,50 @@ def main() -> None:
         'password': EUFY_PASSWORD,
     }
     resp = requests.post(API_BASE + '/passport/login', json=payload)
-    data = resp.json()['data']
-    token = data['auth_token']
+    try:
+        data = resp.json()['data']
+        token = data['auth_token']
+    except:
+        print(f'Error response from Eufy API {resp.status_code}:\n{resp.text}')
+        return
     # expires = datetime.fromtimestamp(data['token_expires_at'])
     # domain = data.get('domain')
 
     resp = requests.post(API_BASE + '/app/get_devs_list', headers={'x-auth-token': token})
-    device = first_door_sensor(resp.json()['data'])
-    state = door_sensor_state(device)
-    updated_at = datetime.utcfromtimestamp(device['update_time'])
-    print(f'{device["device_name"]} is {state}.')
+    sensors = door_sensors(resp.json()['data'])
 
-    if state == 'open' and open_longer_than_delay(updated_at):
-        send_email(device['device_name'], state, updated_at)
+    # Eufy's api sometimes gives stale update_time timestamp, so we make sure
+    # it's sane by comparing with the previous sensor state
+    try:
+        with open('.sensors.json') as fh:
+            previous = json.loads(fh.read())
+    except:
+        previous = []
+
+    for sensor in sensors:
+        state = door_sensor_state(sensor)
+        updated_at = datetime.utcfromtimestamp(sensor['update_time'])
+        prev_state = prev_sensor_state(sensor, previous)
+        print(f'{sensor["device_name"]} is {state}.')
+
+        if state == 'open' and open_longer_than_delay(updated_at, prev_state):
+            send_email(sensor['device_name'], state, updated_at)
+
+    with open('.sensors.json', 'w') as fh:
+        fh.write(json.dumps(sensors))
 
 
-def first_door_sensor(devices):
+def door_sensors(devices):
+    sensors = []
     for device in devices:
         if device['device_type'] == 2:
+            sensors.append(device)
+    return sensors
+
+
+def find_device(devices, sn):
+    for device in devices:
+        if device['device_sn'] == sn:
             return device
     return None
 
@@ -60,9 +87,16 @@ def door_sensor_state(device) -> str:
     return 'open' if param['param_value'] == '1' else 'closed'
 
 
-def open_longer_than_delay(updated_at):
+def prev_sensor_state(sensor, previous_sensors) -> str:
+    prev = find_device(previous_sensors, sensor['device_sn'])
+    if not prev:
+        return None
+    return door_sensor_state(prev)
+
+
+def open_longer_than_delay(updated_at, prev_state) -> bool:
     minutes_open = (datetime.utcnow() - updated_at).total_seconds() / 60
-    return minutes_open > DELAY_MINUTES
+    return minutes_open > DELAY_MINUTES and (minutes_open < DELAY_MINUTES * 2 or prev_state == 'open')
 
 
 def send_email(device, state, updated_at) -> None:

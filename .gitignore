@@ -45,3 +45,4 @@ tags.lock
 tags.temp
 
 secrets.py
+.sensors.json
