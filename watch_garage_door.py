@@ -3,9 +3,10 @@
 
 import humanize
 import json
-import requests
 import pytz
+import requests
 import smtplib
+import sys
 from email.message import EmailMessage
 from datetime import datetime
 
@@ -26,23 +27,26 @@ from secrets import (
 API_BASE: str = "https://mysecurity.eufylife.com/api/v1"
 
 
-def main() -> None:
+def main() -> int:
     payload = {
         'email': EUFY_EMAIL,
         'password': EUFY_PASSWORD,
     }
     resp = requests.post(API_BASE + '/passport/login', json=payload)
     try:
-        data = resp.json()['data']
-        token = data['auth_token']
+        token = resp.json()['data']['auth_token']
+        # expires = datetime.fromtimestamp(resp.json()['data']['token_expires_at'])
+        # domain = resp.json()['data'].get('domain')
     except:
-        print(f'Error response from Eufy API {resp.status_code}:\n{resp.text}')
-        return
-    # expires = datetime.fromtimestamp(data['token_expires_at'])
-    # domain = data.get('domain')
+        error(f'Error response from login to Eufy API {resp.status_code}:\n{resp.text}')
+        return 1
 
     resp = requests.post(API_BASE + '/app/get_devs_list', headers={'x-auth-token': token})
-    sensors = door_sensors(resp.json()['data'])
+    try:
+        sensors = door_sensors(resp.json()['data'])
+    except:
+        error(f'Error response from Eufy API devices list {resp.status_code}:\n{resp.text}')
+        return 1
 
     # Eufy's api sometimes gives stale update_time timestamp, so we make sure
     # it's sane by comparing with the previous sensor state
@@ -63,6 +67,8 @@ def main() -> None:
 
     with open('.sensors.json', 'w') as fh:
         fh.write(json.dumps(sensors))
+
+    return 0
 
 
 def door_sensors(devices):
@@ -141,5 +147,9 @@ def format_time(dt) -> str:
     )
 
 
+def error(msg: str):
+    sys.stderr.write(f'{msg}\n')
+
+
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
