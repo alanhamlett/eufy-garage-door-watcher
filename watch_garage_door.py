@@ -25,33 +25,29 @@ from secrets import (
 
 
 API_BASE: str = "https://mysecurity.eufylife.com/api/v1"
+SENSORS_FILE: str = ".sensors.json"
+SECRET_FILE: str = ".secret-api-token"
 
 
 def main() -> int:
-    payload = {
-        'email': EUFY_EMAIL,
-        'password': EUFY_PASSWORD,
-    }
-    resp = requests.post(API_BASE + '/passport/login', json=payload)
+    token = get_token()
     try:
-        token = resp.json()['data']['auth_token']
-        # expires = datetime.fromtimestamp(resp.json()['data']['token_expires_at'])
-        # domain = resp.json()['data'].get('domain')
-    except:
-        error(f'Error response from login to Eufy API {resp.status_code}:\n{resp.text}')
-        return 1
-
-    resp = requests.post(API_BASE + '/app/get_devs_list', headers={'x-auth-token': token})
-    try:
+        resp = requests.post(API_BASE + '/app/get_devs_list', headers={'x-auth-token': token})
         sensors = door_sensors(resp.json()['data'])
     except:
         error(f'Error response from Eufy API devices list {resp.status_code}:\n{resp.text}')
-        return 1
+        token = get_token(fresh=True)
+        try:
+            resp = requests.post(API_BASE + '/app/get_devs_list', headers={'x-auth-token': token})
+            sensors = door_sensors(resp.json()['data'])
+        except:
+            error(f'Error response from Eufy API devices list {resp.status_code}:\n{resp.text}')
+            return 1
 
     # Eufy's api sometimes gives stale update_time timestamp, so we make sure
     # it's sane by comparing with the previous sensor state
     try:
-        with open('.sensors.json') as fh:
+        with open(SENSORS_FILE) as fh:
             previous = json.loads(fh.read())
     except:
         previous = []
@@ -65,10 +61,39 @@ def main() -> int:
         if state == 'open' and open_longer_than_delay(updated_at, prev_state):
             send_email(sensor['device_name'], state, updated_at)
 
-    with open('.sensors.json', 'w') as fh:
+    with open(SENSORS_FILE, 'w') as fh:
         fh.write(json.dumps(sensors))
 
     return 0
+
+
+def get_token(fresh: bool = False) -> str:
+    if not fresh:
+        try:
+            with open(SECRET_FILE) as fh:
+                token = fh.read().strip()
+                if token:
+                    return token
+        except:
+            pass
+
+    payload = {
+        'email': EUFY_EMAIL,
+        'password': EUFY_PASSWORD,
+    }
+    resp = requests.post(API_BASE + '/passport/login', json=payload)
+    try:
+        token = resp.json()['data']['auth_token']
+        # expires = datetime.fromtimestamp(resp.json()['data']['token_expires_at'])
+        # domain = resp.json()['data'].get('domain')
+    except:
+        error(f'Error response from login to Eufy API {resp.status_code}:\n{resp.text}')
+        return ''
+
+    with open(SECRET_FILE, 'w') as fh:
+        fh.write(token)
+
+    return token
 
 
 def door_sensors(devices):

@@ -46,3 +46,4 @@ tags.temp
 
 secrets.py
 .sensors.json
+.secret-api-token
