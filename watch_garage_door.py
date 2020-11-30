@@ -31,12 +31,18 @@ SECRET_FILE: str = ".secret-api-token"
 
 def main() -> int:
     token = get_token()
+    if not token:
+        error('Missing api token, exiting.')
+        return 1
     try:
         resp = requests.post(API_BASE + '/app/get_devs_list', headers={'x-auth-token': token})
         sensors = door_sensors(resp.json()['data'])
     except:
         error(f'Error response from Eufy API devices list {resp.status_code}:\n{resp.text}')
         token = get_token(fresh=True)
+        if not token:
+            error('Missing api token, exiting.')
+            return 1
         try:
             resp = requests.post(API_BASE + '/app/get_devs_list', headers={'x-auth-token': token})
             sensors = door_sensors(resp.json()['data'])
