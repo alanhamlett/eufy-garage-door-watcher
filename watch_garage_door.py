@@ -80,7 +80,7 @@ def get_token(fresh: bool = False) -> str:
             with open(SECRET_FILE) as fh:
                 token = fh.readline().strip()
                 expires_at = fh.readline().split()
-                if token and int(expires_at or 0) > int(time.time()):
+                if token and int(expires_at or 0) > int(time.time() + 5):
                     return token
         except:
             pass
