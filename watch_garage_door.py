@@ -7,6 +7,7 @@ import pytz
 import requests
 import smtplib
 import sys
+import time
 from email.message import EmailMessage
 from datetime import datetime
 
@@ -77,8 +78,9 @@ def get_token(fresh: bool = False) -> str:
     if not fresh:
         try:
             with open(SECRET_FILE) as fh:
-                token = fh.read().strip()
-                if token:
+                token = fh.readline().strip()
+                expires_at = fh.readline().split()
+                if token and int(expires_at or 0) > int(time.time()):
                     return token
         except:
             pass
@@ -90,14 +92,13 @@ def get_token(fresh: bool = False) -> str:
     resp = requests.post(API_BASE + '/passport/login', json=payload)
     try:
         token = resp.json()['data']['auth_token']
-        # expires = datetime.fromtimestamp(resp.json()['data']['token_expires_at'])
-        # domain = resp.json()['data'].get('domain')
+        expires_at = resp.json()['data']['token_expires_at']
     except:
         error(f'Error response from login to Eufy API {resp.status_code}:\n{resp.text}')
         return ''
 
     with open(SECRET_FILE, 'w') as fh:
-        fh.write(token)
+        fh.write(f'{token}\n{expires_at}')
 
     return token
 
