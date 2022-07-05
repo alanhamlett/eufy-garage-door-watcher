@@ -8,6 +8,7 @@ import requests
 import smtplib
 import sys
 import time
+import traceback
 from email.message import EmailMessage
 from datetime import datetime
 
@@ -35,11 +36,12 @@ def main() -> int:
     if not token:
         error('Missing api token, exiting.')
         return 1
+    resp = None
     try:
         resp = requests.post(API_BASE + '/app/get_devs_list', headers={'x-auth-token': token})
         sensors = door_sensors(resp.json()['data'])
     except:
-        error(f'Error response from Eufy API devices list {resp.status_code}:\n{resp.text}')
+        error(f'Error response from Eufy API devices list {resp.status_code if resp else ""}:\n{resp.text if resp else traceback.format_exc()}')
         token = get_token(fresh=True)
         if not token:
             error('Missing api token, exiting.')
@@ -48,7 +50,7 @@ def main() -> int:
             resp = requests.post(API_BASE + '/app/get_devs_list', headers={'x-auth-token': token})
             sensors = door_sensors(resp.json()['data'])
         except:
-            error(f'Error response from Eufy API devices list {resp.status_code}:\n{resp.text}')
+            error(f'Error response from Eufy API devices list {resp.status_code if resp else ""}:\n{resp.text if resp else traceback.format_exc()}')
             return 1
 
     # Eufy's api sometimes gives stale update_time timestamp, so we make sure
